@@ -1,4 +1,5 @@
-﻿using CelebsApi.Models;
+﻿using CelebApi.Models;
+using CelebsApi.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -16,25 +17,32 @@ namespace CelebApi.DAL
         static WebClient web = new WebClient();
         static string baseUrl = "https://www.imdb.com";
         static string filePath = AppDomain.CurrentDomain.BaseDirectory + @"Celebs.json";
+        static FileLogger logger = new FileLogger();
 
         // create json file and for reset all use
         public string CreateJsonFile()
         {
             string json = string.Empty;
-
-            if (!File.Exists(filePath))
+            try
             {
-                string html = web.DownloadString(baseUrl + "/list/ls052283250/");
-                MatchCollection clbs = Regex.Matches(html, "=\"/name/[mn/?0-9]{11}ref_=nmls_pst", RegexOptions.Singleline);
+                if (!File.Exists(filePath))
+                {
+                    string html = web.DownloadString(baseUrl + "/list/ls052283250/");
+                    MatchCollection clbs = Regex.Matches(html, "=\"/name/[mn/?0-9]{11}ref_=nmls_pst", RegexOptions.Singleline);
 
-                HashSet<Celeb> celebs = GetCelebs(clbs);
+                    HashSet<Celeb> celebs = GetCelebs(clbs);
 
-                json = JsonConvert.SerializeObject(celebs);
-                File.WriteAllText(filePath, json);
+                    json = JsonConvert.SerializeObject(celebs);
+                    File.WriteAllText(filePath, json);
+                }
+                else
+                {
+                    json = File.ReadAllText(filePath);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                json = File.ReadAllText(filePath);
+                logger.Log(this.ToString() + " : " + ex.ToString());
             }
             return json;
         }
@@ -44,16 +52,23 @@ namespace CelebApi.DAL
         {
             HashSet<Celeb> celebs = new HashSet<Celeb>();
             int id = 0;
-            Parallel.ForEach<string>(coll.Cast<Match>().Select(p => p.Value).ToArray(), (m) =>
+            try
             {
-                string url = m.Replace("=\"", baseUrl);
-                string html = GetHtml(url);
+                Parallel.ForEach<string>(coll.Cast<Match>().Select(p => p.Value).ToArray(), (m) =>
+                {
+                    string url = m.Replace("=\"", baseUrl);
+                    string html = GetHtml(url);
 
-                Celeb celeb = GetCeleb(id, html);
+                    Celeb celeb = GetCeleb(id, html);
 
-                celebs.Add(celeb);
-                id++;
-            });
+                    celebs.Add(celeb);
+                    id++;
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.Log(this.ToString() + " : " + ex.ToString());
+            }
             return celebs;
         }
 
@@ -64,23 +79,30 @@ namespace CelebApi.DAL
             {
                 HtmlPath = html
             };
-
-            MatchCollection clb = Regex.Matches(html, "<span class=\"itemprop\">(.+?)</span>", RegexOptions.Singleline);
-            celeb.Id = id;
-            celeb.Name = clb[0].Groups[1].Value;
-            for (int i = 1; i < clb.Count; i++)
+            try
             {
-                celeb.Role += clb[i].Groups[1].Value.Replace("\n", "") + " ";
+
+                MatchCollection clb = Regex.Matches(html, "<span class=\"itemprop\">(.+?)</span>", RegexOptions.Singleline);
+                celeb.Id = id;
+                celeb.Name = clb[0].Groups[1].Value;
+                for (int i = 1; i < clb.Count; i++)
+                {
+                    celeb.Role += clb[i].Groups[1].Value.Replace("\n", "") + " ";
+                }
+                clb = Regex.Matches(html, "<time datetime=\"(.+?)\">", RegexOptions.Singleline);
+                celeb.BirthDate = DateTime.Parse(clb[0].Groups[1].Value).ToString("dd/MM/yyyy");
+
+                if (celeb.Role.IndexOf("Actress") != -1)
+                    celeb.Gender = "Female";
+
+                clb = Regex.Matches(html, "Picture\"\nsrc=\"https://m.media-amazon.com/images/(.+?).jpg", RegexOptions.Singleline);
+
+                celeb.Image = clb[0].Value.Replace("Picture\"\nsrc=\"", "");
             }
-            clb = Regex.Matches(html, "<time datetime=\"(.+?)\">", RegexOptions.Singleline);
-            celeb.BirthDate = DateTime.Parse(clb[0].Groups[1].Value).ToString("dd/MM/yyyy");
-
-            if (celeb.Role.IndexOf("Actress") != -1)
-                celeb.Gender = "Female";
-
-            clb = Regex.Matches(html, "Picture\"\nsrc=\"https://m.media-amazon.com/images/(.+?).jpg", RegexOptions.Singleline);
-
-            celeb.Image = clb[0].Value.Replace("Picture\"\nsrc=\"", "");
+            catch (Exception ex)
+            {
+                logger.Log(this.ToString() + " : " + ex.ToString());
+            }
             return celeb;
         }
 
@@ -119,7 +141,7 @@ namespace CelebApi.DAL
         private string EditRecord(Action type, int id, JObject celeb)
         {
             string json = string.Empty;
-
+            try {
             if (File.Exists(filePath))
             {
                 json = File.ReadAllText(filePath);
@@ -151,6 +173,11 @@ namespace CelebApi.DAL
                 }
                 json = JsonConvert.SerializeObject(data);
                 File.WriteAllText(filePath, json);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Log(this.ToString() + " : " + ex.ToString());
             }
             return json;
         }
