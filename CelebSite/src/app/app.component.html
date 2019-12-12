@@ -1,0 +1,21 @@
+<div *ngIf="!wait">
+  <div class="row heder">
+    <div class="cullomn image"></div>
+    <div class="cullomn">שם</div>
+    <div class="cullomn">תאריך לידה</div>
+    <div class="cullomn">מגדר</div>
+    <div class="cullomn">תפקיד/ים</div>
+    <div class="button"></div>
+  </div>
+  <div class="row" *ngFor="let celeb of celebs;let i = index">
+    <div class="cullomn image"><img src={{celeb.Image}} /></div>
+    <div class="cullomn">{{celeb.Name}}</div>
+    <div class="cullomn">{{celeb.BirthDate}}</div>
+    <div class="cullomn">{{celeb.Gender}}</div>
+    <div class="cullomn">{{celeb.Role}}</div>
+    <div class="button"><input type="button" value="מחק" (click)="remove(celeb.Id)" /></div>
+  </div>
+  <div><input type="button" value="אפס הכל" (click)="resetAll()" /></div>
+</div>
+<div *ngIf="wait"><i class="fas fa-spinner fa-pulse spiner"></i></div>
+
